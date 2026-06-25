@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Marias Porrazo 🫘</title>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --cw:68px;--ch:96px;--cr:7px;
+  --gold:#C9A227;--felt:#1a6b35;--wood:#3D2810;
+}
+html,body{height:100%;overflow:hidden;user-select:none;-webkit-user-select:none}
+body{
+  background:radial-gradient(ellipse at 40% 35%,#1e7a3c 0%,#0e4e22 55%,#07310f 100%);
+  font-family:Georgia,'Times New Roman',serif;
+  color:#f5f0e8;
+  display:flex;flex-direction:column;min-height:100vh;
+}
+
+/* ── HEADER ── */
+#hdr{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:7px 14px;
+  background:rgba(0,0,0,.45);
+  border-bottom:1px solid rgba(201,162,39,.3);
+  flex-shrink:0;gap:8px;
+}
+.sc{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:80px}
+.sc-name{font-size:9px;color:rgba(245,240,232,.55);letter-spacing:.1em;text-transform:uppercase}
+.sc-val{font-size:28px;font-weight:700;color:#FFD700;line-height:1;
+        text-shadow:0 0 12px rgba(255,215,0,.45);transition:all .4s}
+.sc-val.cpu-col{color:#CD7F32;text-shadow:0 0 12px rgba(205,127,50,.45)}
+.sc-bean{font-size:11px}
+.bar-wrap{width:70px;height:5px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden;margin-top:2px}
+.bar{height:100%;border-radius:3px;transition:width .6s cubic-bezier(.17,.67,.38,1.2)}
+.bar-p{background:linear-gradient(90deg,#8B6914,#FFD700)}
+.bar-c{background:linear-gradient(90deg,#6B3A2A,#CD7F32)}
+.sc-goal{font-size:8px;color:rgba(245,240,232,.28);letter-spacing:.06em}
+.hdr-mid{display:flex;flex-direction:column;align-items:center;gap:3px}
+.rnd-lbl{font-size:11px;color:var(--gold);letter-spacing:.12em}
+.deck-ct{font-size:10px;color:rgba(245,240,232,.45)}
+
+/* ── GAME BOARD ── */
+#board{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
+
+/* CPU row */
+#cpu-row{
+  padding:8px 16px 4px;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  flex-shrink:0;
+}
+.row-lbl{font-size:8px;color:rgba(245,240,232,.4);letter-spacing:.14em;text-transform:uppercase}
+.hand-row{display:flex;gap:8px;justify-content:center}
+.pile-ct{font-size:9px;color:rgba(245,240,232,.35)}
+
+/* Table */
+#tbl-wrap{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  position:relative;padding:4px 8px;min-height:0;
+}
+.tbl-lbl{
+  position:absolute;top:5px;
+  font-size:8px;color:rgba(255,255,255,.18);
+  letter-spacing:.22em;text-transform:uppercase
+}
+#tbl{
+  position:relative;
+  width:240px;
+  height:calc(var(--ch) + 28px);
+  flex-shrink:0;
+}
+.empty-tbl{
+  position:absolute;inset:0;display:flex;
+  align-items:center;justify-content:center;
+  font-size:10px;color:rgba(255,255,255,.1);
+  letter-spacing:.18em;border:1px dashed rgba(255,255,255,.08);
+  border-radius:10px;
+}
+.libre-tag{
+  position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);
+  font-size:8px;color:rgba(255,120,80,.7);letter-spacing:.08em;
+  white-space:nowrap;display:none;
+}
+
+/* Player row */
+#plr-row{
+  padding:4px 16px 6px;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  flex-shrink:0;
+}
+
+/* Controls */
+#ctrl{
+  padding:7px 16px 9px;
+  display:flex;gap:8px;justify-content:center;
+  flex-shrink:0;
+  background:rgba(0,0,0,.22);
+  border-top:1px solid rgba(255,255,255,.05);
+}
+.btn{
+  font-family:Georgia,serif;font-size:12px;letter-spacing:.07em;
+  padding:7px 20px;border-radius:20px;border:1px solid;
+  cursor:pointer;transition:all .14s;text-transform:uppercase;
+}
+.btn:active{transform:scale(.96)}
+.btn-go{background:var(--gold);border-color:#FFD700;color:#1a0a00;font-weight:700;
+        box-shadow:0 2px 12px rgba(201,162,39,.4)}
+.btn-go:hover{background:#FFD700;box-shadow:0 2px 18px rgba(255,215,0,.6)}
+.btn-nd{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.2);
+        color:rgba(245,240,232,.65)}
+.btn-nd:hover{background:rgba(255,255,255,.13)}
+.btn-nd:disabled{opacity:.35;cursor:default}
+
+/* ── CARDS ── */
+.card{
+  width:var(--cw);height:var(--ch);border-radius:var(--cr);
+  position:relative;flex-shrink:0;
+  box-shadow:2px 3px 8px rgba(0,0,0,.4);
+  transition:transform .15s cubic-bezier(.17,.67,.38,1.2),box-shadow .15s;
+}
+.c-face{background:#fff;border:1px solid rgba(0,0,0,.12)}
+.c-back{
+  background:linear-gradient(135deg,#0D2818 0%,#1B4332 45%,#1A5C3A 55%,#0D2818 100%);
+  border:1.5px solid rgba(201,162,39,.38);
+}
+.c-back::before{
+  content:'';position:absolute;inset:4px;border-radius:4px;
+  border:1px solid rgba(201,162,39,.22);
+  background:repeating-linear-gradient(45deg,rgba(201,162,39,.07) 0,rgba(201,162,39,.07) 2px,transparent 2px,transparent 8px);
+}
+.c-back::after{content:'✦';position:absolute;inset:0;display:flex;
+  align-items:center;justify-content:center;font-size:13px;color:rgba(201,162,39,.42)}
+.c-red .c-rk,.c-red .c-su{color:#c0392b}
+.c-blk .c-rk,.c-blk .c-su{color:#1a1a2e}
+.c-cor{position:absolute;display:flex;flex-direction:column;align-items:center;line-height:1;gap:1px}
+.c-cor.tl{top:4px;left:5px}
+.c-cor.br{bottom:4px;right:5px;transform:rotate(180deg)}
+.c-rk{font-family:Georgia,serif;font-weight:700;font-size:15px;line-height:1}
+.c-su{font-size:11px;line-height:1}
+.c-ctr{
+  position:absolute;inset:0;display:flex;
+  align-items:center;justify-content:center;
+  font-size:28px;flex-direction:column;gap:1px;
+}
+.c-face.face-c .c-rk{font-size:17px}
+.c-face.face-c .c-ctr{font-size:20px}
+.c-face.face-c .c-face-name{font-size:9px;letter-spacing:.04em;font-family:Georgia,serif;font-weight:700}
+
+/* Playable hover */
+.c-play{cursor:pointer}
+.c-play:hover{
+  transform:translateY(-14px) scale(1.06) !important;
+  box-shadow:4px 6px 20px rgba(0,0,0,.5),0 0 18px rgba(255,215,0,.35) !important;
+  z-index:20;
+}
+/* Porrazo opportunity pulse */
+.c-porrazo{animation:ppulse .85s ease-in-out infinite}
+@keyframes ppulse{
+  0%,100%{box-shadow:2px 3px 8px rgba(0,0,0,.4),0 0 6px rgba(255,60,60,.3)}
+  50%{box-shadow:2px 3px 8px rgba(0,0,0,.4),0 0 22px rgba(255,60,60,.85),0 0 40px rgba(255,100,50,.2)}
+}
+/* Table card wrappers */
+.tw{position:absolute;top:0;transition:all .3s ease}
+/* Libre highlight */
+.c-libre{animation:libreglow 1.2s ease-in-out infinite}
+@keyframes libreglow{
+  0%,100%{box-shadow:0 0 6px rgba(255,150,50,.35)}
+  50%{box-shadow:0 0 20px rgba(255,150,50,.75),0 0 36px rgba(255,100,20,.2)}
+}
+
+/* ── OVERLAY ── */
+#ov{position:fixed;inset:0;pointer-events:none;z-index:100}
+.big-msg{
+  position:absolute;top:38%;left:50%;
+  transform:translate(-50%,-50%);
+  font-size:44px;font-weight:900;font-family:Georgia,serif;
+  letter-spacing:.05em;text-shadow:0 0 22px currentColor;
+  animation:bigIn 2s ease-out forwards;white-space:nowrap;
+}
+@keyframes bigIn{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.35)}
+  18%{opacity:1;transform:translate(-50%,-50%) scale(1.18)}
+  35%{transform:translate(-50%,-50%) scale(.98)}
+  65%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-60%) scale(.85)}
+}
+.msg-porrazo{color:#FF4040}
+.msg-limpia{color:#44FFAA}
+.msg-chica{color:#FFD700}
+.msg-tendido{color:#88CCFF}
+.msg-pts{color:#FFD700}
+.pts-pop{
+  position:absolute;font-size:22px;font-weight:700;font-family:Georgia,serif;
+  animation:ptsPop 1.5s ease-out forwards;pointer-events:none;
+}
+@keyframes ptsPop{
+  0%{opacity:0;transform:translateY(0) scale(.6)}
+  20%{opacity:1;transform:translateY(-12px) scale(1.2)}
+  60%{opacity:1;transform:translateY(-35px) scale(1)}
+  100%{opacity:0;transform:translateY(-60px) scale(.8)}
+}
+.canto-pop{
+  position:absolute;font-size:30px;font-weight:900;font-family:Georgia,serif;
+  color:#88CCFF;text-shadow:0 0 16px rgba(136,204,255,.7);
+  animation:cantoPop 1.1s ease-out forwards;pointer-events:none;
+  transform:translateX(-50%);
+}
+@keyframes cantoPop{
+  0%{opacity:0;transform:translateX(-50%) scale(.5) translateY(0)}
+  25%{opacity:1;transform:translateX(-50%) scale(1.1) translateY(-18px)}
+  60%{opacity:1;transform:translateX(-50%) scale(1) translateY(-32px)}
+  100%{opacity:0;transform:translateX(-50%) scale(.9) translateY(-55px)}
+}
+
+/* ── STATUS ── */
+#status{
+  position:fixed;bottom:52px;right:8px;
+  background:rgba(0,0,0,.58);border-radius:8px;
+  padding:4px 9px;font-size:9.5px;color:rgba(245,240,232,.6);
+  max-width:150px;text-align:right;letter-spacing:.04em;
+  pointer-events:none;
+}
+
+/* ── LOG ── */
+#log{
+  position:fixed;bottom:52px;left:6px;
+  width:170px;max-height:90px;overflow:hidden;pointer-events:none;
+}
+.log-e{
+  font-size:9.5px;color:rgba(245,240,232,.52);padding:1px 0;
+  border-bottom:1px solid rgba(255,255,255,.05);
+  font-family:Georgia,serif;animation:logF 5s forwards;
+}
+@keyframes logF{0%,60%{opacity:.6}100%{opacity:.18}}
+
+/* ── WIN SCREEN ── */
+#win{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);
+  z-index:200;flex-direction:column;align-items:center;
+  justify-content:center;gap:14px;
+}
+#win.on{display:flex}
+#win-title{font-size:38px;font-weight:900;font-family:Georgia,serif;
+           text-shadow:0 0 26px currentColor;letter-spacing:.05em}
+#win-sub{font-size:13px;color:rgba(245,240,232,.65);letter-spacing:.1em;font-family:Georgia,serif}
+#win-beans{font-size:28px;letter-spacing:4px}
+
+@media(min-width:480px){
+  :root{--cw:78px;--ch:110px}
+  .c-rk{font-size:17px}.c-ctr{font-size:32px}
+  .c-face.face-c .c-ctr{font-size:23px}
+}
+@media(min-width:640px){
+  :root{--cw:90px;--ch:126px}
+  #tbl{width:280px;height:calc(var(--ch)+28px)}
+}
+</style>
+</head>
+<body>
+
+<div id="hdr">
+  <div class="sc">
+    <div class="sc-name">Tú 🎮</div>
+    <div class="sc-val" id="p-sc">0</div>
+    <div class="bar-wrap"><div class="bar bar-p" id="p-bar" style="width:0%"></div></div>
+    <div class="sc-goal">/ 20 🫘</div>
+  </div>
+  <div class="hdr-mid">
+    <div class="rnd-lbl" id="rnd-lbl">MARIAS PORRAZO</div>
+    <div class="deck-ct" id="deck-ct">🂠 —</div>
+  </div>
+  <div class="sc" style="align-items:flex-end">
+    <div class="sc-name">Tía 🤖</div>
+    <div class="sc-val cpu-col" id="c-sc">0</div>
+    <div class="bar-wrap"><div class="bar bar-c" id="c-bar" style="width:0%"></div></div>
+    <div class="sc-goal">/ 20 🫘</div>
+  </div>
+</div>
+
+<div id="board">
+  <div id="cpu-row">
+    <div class="row-lbl" id="cpu-name">Tía Tencha</div>
+    <div class="hand-row" id="cpu-hand"></div>
+    <div class="pile-ct" id="cpu-pile">Botín: 0</div>
+  </div>
+
+  <div id="tbl-wrap">
+    <div class="tbl-lbl">— MESA —</div>
+    <div id="tbl"><div class="empty-tbl">MESA VACÍA</div></div>
+    <div class="libre-tag" id="libre-tag">⚡ Carta libre — ¡Porrazo posible!</div>
+  </div>
+
+  <div id="plr-row">
+    <div class="pile-ct" id="plr-pile">Tu botín: 0</div>
+    <div class="row-lbl">Tu Mano</div>
+    <div class="hand-row" id="plr-hand"></div>
+  </div>
+</div>
+
+<div id="ctrl">
+  <button class="btn btn-go" id="btn-start" onclick="startGame()">Iniciar Partida</button>
+  <button class="btn btn-nd" id="btn-next" onclick="nextRound()" style="display:none" disabled>Nueva Ronda ▶</button>
+</div>
+
+<div id="status">Presiona Iniciar Partida</div>
+<div id="log"></div>
+<div id="ov"></div>
+
+<div id="win">
+  <div id="win-title">¡GANASTE!</div>
+  <div id="win-beans">🫘🫘🫘</div>
+  <div id="win-sub">Tú: 0 · Tía: 0</div>
+  <button class="btn btn-go" onclick="startGame()" style="margin-top:6px">Jugar de Nuevo</button>
+</div>
+
+<script>
+'use strict';
+/* ════════════════════════════════════════
+   MARIAS PORRAZO — Game Engine v1
+   In memory of Grandma María 1930–2025 ❤
+════════════════════════════════════════ */
+
+// ── CONSTANTS ──────────────────────────
+const RANKS=[1,2,3,4,5,6,7,11,12,13];
+const SUITS=['H','D','S','C'];
+const SYM={H:'♥',D:'♦',S:'♠',C:'♣'};
+const COL={H:'c-red',D:'c-red',S:'c-blk',C:'c-blk'};
+const RD={1:'A',11:'J',12:'Q',13:'K'};
+const TIA_NAMES=['Tía Lucho','Tía Tencha','Tía María','Tío Beto','Tía Tonchi'];
+
+// ── STATE ──────────────────────────────
+let G={};
+function initG(){
+  G={
+    phase:'IDLE',
+    deck:[],playerHand:[],cpuHand:[],
+    tbl:[],pPile:[],cPile:[],
+    pScore:0,cScore:0,
+    round:0,
+    dealer:'cpu',
+    turn:'player',
+    libre:null,       // {card,by}
+    lastCapture:null, // 'p'|'c'
+    busy:false,
+    tiaName:TIA_NAMES[Math.floor(Math.random()*TIA_NAMES.length)],
+  };
+}
+
+// ── HELPERS ────────────────────────────
+const rdisp=r=>RD[r]||String(r);
+const nxt=r=>RANKS[(RANKS.indexOf(r)+1)%RANKS.length];
+const isFace=r=>r>=11;
+const pPts=r=>isFace(r)?3:1;   // Porrazo points
+const lBonus=r=>r===13?4:r===12?3:r===11?2:1; // Limpia bonus
+
+function mkDeck(){
+  const d=[];
+  for(const s of SUITS)for(const r of RANKS)d.push({r,s});
+  return d;
+}
+function shuffle(a){
+  const b=[...a];
+  for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}
+  return b;
+}
+
+// ── AUDIO ──────────────────────────────
+let AC=null;
+function ac(){return AC||(AC=new(window.AudioContext||window.webkitAudioContext)())}
+
+function sndClack(){
+  try{
+    const c=ac(),len=Math.floor(c.sampleRate*.1),buf=c.createBuffer(1,len,c.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(c.sampleRate*.01))*.95;
+    const src=c.createBufferSource();src.buffer=buf;
+    const g=c.createGain();g.gain.value=.8;
+    const bq=c.createBiquadFilter();bq.type='bandpass';bq.frequency.value=1400;bq.Q.value=.6;
+    src.connect(bq);bq.connect(g);g.connect(c.destination);src.start();
+  }catch(e){}
+}
+function sndSweep(){
+  try{
+    const c=ac(),len=Math.floor(c.sampleRate*.22),buf=c.createBuffer(1,len,c.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<len;i++){const t=i/c.sampleRate;d[i]=(Math.random()*2-1)*Math.exp(-t*10)*.45;}
+    const src=c.createBufferSource();src.buffer=buf;
+    const f=c.createBiquadFilter();f.type='highpass';f.frequency.value=2800;
+    const g=c.createGain();g.gain.value=.55;
+    src.connect(f);f.connect(g);g.connect(c.destination);src.start();
+  }catch(e){}
+}
+function sndPt(){
+  try{
+    const c=ac(),o=c.createOscillator(),g=c.createGain();
+    o.frequency.value=820;o.type='sine';
+    g.gain.setValueAtTime(.28,c.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.28);
+    o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+.28);
+  }catch(e){}
+}
+function sndCanto(hit){
+  try{
+    const c=ac(),o=c.createOscillator(),g=c.createGain();
+    o.frequency.value=hit?700:480;o.type='triangle';
+    g.gain.setValueAtTime(.22,c.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.38);
+    o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+.38);
+  }catch(e){}
+}
+
+// ── CARD ELEMENT ───────────────────────
+function mkCard(card,faceUp=true,extra=[]){
+  const el=document.createElement('div');
+  el.className='card '+(faceUp?'c-face '+COL[card.s]:'c-back');
+  if(faceUp){
+    el.dataset.r=card.r;el.dataset.s=card.s;
+    const rs=rdisp(card.r),sy=SYM[card.s];
+    if(isFace(card.r))el.classList.add('face-c');
+    const tl=document.createElement('div');tl.className='c-cor tl';
+    tl.innerHTML=`<span class="c-rk">${rs}</span><span class="c-su">${sy}</span>`;
+    const br=document.createElement('div');br.className='c-cor br';
+    br.innerHTML=`<span class="c-rk">${rs}</span><span class="c-su">${sy}</span>`;
+    const ctr=document.createElement('div');ctr.className='c-ctr';
+    if(isFace(card.r)){
+      const nm={11:'Sota',12:'Caballo',13:'Rey'}[card.r];
+      ctr.innerHTML=`<span>${sy}</span><span class="c-face-name">${nm}</span>`;
+    }else{ctr.textContent=sy;}
+    el.append(tl,ctr,br);
+  }
+  for(const c of extra)el.classList.add(c);
+  return el;
+}
+
+// ── TENDIDO SCORING ────────────────────
+function tendidoEvents(cards){
+  const ev=[];
+  [1,2,3,4].forEach((cr,i)=>{if(cards[i].r===cr)ev.push({t:'canto',pos:i+1,r:cr,pts:i+1});});
+  const cnt={11:0,12:0,13:0};
+  cards.forEach(c=>{if(c.r>=11)cnt[c.r]++;});
+  for(const[rk,n]of Object.entries(cnt)){
+    const r=+rk;
+    if(n>=2)ev.push({t:'pair',r,pts:r===11?2:r===12?3:4});
+    if(n>=3)ev.push({t:'triple',r,pts:r===11?6:r===12?9:12});
+  }
+  return ev;
+}
+
+// ── SWEEP LOGIC ────────────────────────
+// Returns table cards that get swept when you play `rank` (matching then chaining forward)
+function calcSweep(rank,tbl){
+  const mi=tbl.findIndex(c=>c.r===rank);
+  if(mi===-1)return null;
+  const sw=[tbl[mi]];
+  let rem=tbl.filter((_,i)=>i!==mi),cur=rank;
+  while(true){
+    const nx=nxt(cur),ni=rem.findIndex(c=>c.r===nx);
+    if(ni===-1)break;
+    sw.push(rem[ni]);rem.splice(ni,1);cur=nx;
+  }
+  return sw;
+}
+// Chain from NEXT rank (used after Porrazo)
+function sweepFromNext(rank,tbl){
+  const sw=[];let rem=[...tbl],cur=rank;
+  while(true){
+    const nx=nxt(cur),ni=rem.findIndex(c=>c.r===nx);
+    if(ni===-1)break;
+    sw.push(rem[ni]);rem.splice(ni,1);cur=nx;
+  }
+  return sw;
+}
+
+// ── RENDER ─────────────────────────────
+function renderHUD(){
+  document.getElementById('p-sc').textContent=G.pScore;
+  document.getElementById('c-sc').textContent=G.cScore;
+  document.getElementById('p-bar').style.width=Math.min(100,G.pScore/20*100)+'%';
+  document.getElementById('c-bar').style.width=Math.min(100,G.cScore/20*100)+'%';
+  document.getElementById('deck-ct').textContent='🂠 '+G.deck.length;
+  document.getElementById('rnd-lbl').textContent=G.round>0?'RONDA '+G.round:'MARIAS PORRAZO';
+  document.getElementById('plr-pile').textContent='Tu botín: '+G.pPile.length;
+  document.getElementById('cpu-pile').textContent='Botín: '+G.cPile.length;
+  document.getElementById('cpu-name').textContent=G.tiaName||'Tía';
+}
+function renderCpuHand(){
+  const c=document.getElementById('cpu-hand');c.innerHTML='';
+  for(let i=0;i<G.cpuHand.length;i++)c.appendChild(mkCard(G.cpuHand[i],false));
+}
+function renderPlrHand(){
+  const c=document.getElementById('plr-hand');c.innerHTML='';
+  const interactive=G.phase==='PLAYING'&&G.turn==='p'&&!G.busy;
+  G.playerHand.forEach((card,i)=>{
+    const canSwp=calcSweep(card.r,G.tbl)!==null;
+    const canPrz=G.libre&&G.libre.by==='c'&&card.r===G.libre.card.r;
+    const cls=[];
+    if(interactive){
+      cls.push('c-play');
+      if(canPrz)cls.push('c-porrazo');
+    }
+    const el=mkCard(card,true,cls);
+    if(interactive)el.addEventListener('click',()=>plrPlay(i));
+    c.appendChild(el);
+  });
+}
+function renderTable(){
+  const cont=document.getElementById('tbl');
+  cont.innerHTML='';
+  document.getElementById('libre-tag').style.display=G.libre?'block':'none';
+  if(G.tbl.length===0){
+    cont.innerHTML='<div class="empty-tbl">MESA VACÍA</div>';return;
+  }
+  const max=8,cards=G.tbl.slice(-max);
+  const W=Math.min(240,50+cards.length*22);
+  cont.style.width=W+'px';
+  cards.forEach((card,i)=>{
+    const wrap=document.createElement('div');
+    wrap.className='tw';wrap.style.left=(i*22)+'px';wrap.style.zIndex=i;
+    const isLibre=G.libre&&G.libre.card===card;
+    wrap.appendChild(mkCard(card,true,isLibre?['c-libre']:[]));
+    cont.appendChild(wrap);
+  });
+}
+function renderAll(){renderHUD();renderCpuHand();renderPlrHand();renderTable();}
+
+// ── OVERLAY / LOG ──────────────────────
+function bigMsg(txt,type='pts',ms=1900){
+  const el=document.createElement('div');
+  el.className='big-msg msg-'+type;el.textContent=txt;
+  document.getElementById('ov').appendChild(el);
+  setTimeout(()=>el.remove(),ms);
+}
+function ptsPop(pts,isP){
+  const el=document.createElement('div');
+  el.className='pts-pop';
+  el.textContent='+'+pts+' 🫘';
+  el.style.color=isP?'#FFD700':'#CD7F32';
+  el.style.left=(isP?'18%':'72%');
+  el.style.top=(isP?'62%':'34%');
+  document.getElementById('ov').appendChild(el);
+  setTimeout(()=>el.remove(),1500);
+}
+function cantoPop(txt,x,y){
+  const el=document.createElement('div');
+  el.className='canto-pop';el.textContent=txt;
+  el.style.left=x+'px';el.style.top=y+'px';
+  document.getElementById('ov').appendChild(el);
+  setTimeout(()=>el.remove(),1100);
+}
+function setStatus(t){document.getElementById('status').textContent=t;}
+function addLog(m){
+  const l=document.getElementById('log');
+  const e=document.createElement('div');e.className='log-e';e.textContent=m;
+  l.insertBefore(e,l.firstChild);
+  while(l.children.length>5)l.removeChild(l.lastChild);
+}
+function wait(ms){return new Promise(r=>setTimeout(r,ms));}
+
+// ── AWARD POINTS ───────────────────────
+function award(pts,who){
+  if(who==='p'){G.pScore+=pts;ptsPop(pts,true);}
+  else{G.cScore+=pts;ptsPop(pts,false);}
+  sndPt();renderHUD();
+  if(G.pScore>=20||G.cScore>=20){setTimeout(endGame,700);return true;}
+  return false;
+}
+
+// ── TENDIDO DEAL ───────────────────────
+async function dealTendido(){
+  const cards=G.deck.splice(0,4);
+  const cantoRanks=[1,2,3,4];
+  const cantoWords=['¡Uno!','¡Dos!','¡Tres!','¡Cuatro!'];
+  const tblRect=document.getElementById('tbl').getBoundingClientRect();
+  let tendScore=0;
+
+  for(let i=0;i<4;i++){
+    const c=cards[i];G.tbl.push(c);
+    const cx=tblRect.left+tblRect.width/2,cy=tblRect.top+tblRect.height/2;
+    cantoPop(cantoWords[i],cx,cy);
+    const hit=c.r===cantoRanks[i];
+    sndCanto(hit);
+    renderTable();
+    if(hit){
+      tendScore+=i+1;
+      addLog('🎯 '+cantoWords[i]+' → '+rdisp(c.r)+' = +'+(i+1)+' 🫘');
+    }
+    await wait(850);
+  }
+
+  // Figure combos
+  const evs=tendidoEvents(G.tbl);let figPts=0;
+  for(const ev of evs){
+    if(ev.t==='pair'||ev.t==='triple'){
+      figPts+=ev.pts;
+      const nm=ev.t==='pair'?'Par':'Trío';
+      const rn={11:'J',12:'Q',13:'K'}[ev.r];
+      addLog('♛ '+nm+' de '+rn+'s! +'+ev.pts+' 🫘');
+    }
+  }
+
+  const total=tendScore+figPts;
+  if(total>0){
+    bigMsg((figPts>0?'¡CHICA! ':'')+'+'+ total+' 🫘','chica',2000);
+    await wait(400);
+    if(award(total,G.dealer==='p'?'p':'c'))return;
+    await wait(700);
+  }
+}
+
+// ── EXECUTE PLAY ───────────────────────
+async function execPlay(card,who){
+  const isP=who==='p';
+
+  // ─ Porrazo?
+  if(G.libre&&G.libre.by!==who&&card.r===G.libre.card.r){
+    await doPorrazo(card,who);return;
+  }
+
+  // ─ Sweep?
+  const sw=calcSweep(card.r,G.tbl);
+  if(sw){
+    for(const sc of sw){const i=G.tbl.indexOf(sc);if(i!==-1)G.tbl.splice(i,1);}
+    const pile=isP?G.pPile:G.cPile;
+    pile.push(card,...sw);
+    G.libre=null;G.lastCapture=who;
+    sndSweep();
+    addLog((isP?'Tú':'Tía')+': arrastró '+(sw.length+1)+' cartas');
+    renderAll();
+    // Limpia?
+    if(G.tbl.length===0){
+      const b=lBonus(card.r);
+      bigMsg('¡LIMPIA! 🌬️','limpia',2000);
+      addLog('¡LIMPIA! +'+b+' 🫘');
+      await wait(500);
+      if(award(b,who))return;
+      await wait(700);
+    }
+  }else{
+    // Libre
+    G.tbl.push(card);G.libre={card,by:who};
+    addLog((isP?'Tú':'Tía')+': puso '+rdisp(card.r)+SYM[card.s]+' libre');
+    renderAll();
+  }
+
+  if(G.playerHand.length===0&&G.cpuHand.length===0)await checkRedeal();
+}
+
+// ── PORRAZO ────────────────────────────
+async function doPorrazo(card,who){
+  const isP=who==='p';
+  sndClack();
+  bigMsg('¡PORRAZO! 💥','porrazo',2200);
+  await wait(200);sndClack();
+
+  const pts=pPts(card.r);
+  const li=G.tbl.indexOf(G.libre.card);if(li!==-1)G.tbl.splice(li,1);
+
+  // Chain from next rank
+  const sw=sweepFromNext(card.r,G.tbl);
+  for(const sc of sw){const i=G.tbl.indexOf(sc);if(i!==-1)G.tbl.splice(i,1);}
+
+  const pile=isP?G.pPile:G.cPile;
+  pile.push(card,G.libre.card,...sw);
+  G.lastCapture=who;G.libre=null;
+  sndSweep();
+  addLog('💥 PORRAZO! '+(isP?'Tú':'Tía')+' +'+pts+' 🫘'+(sw.length>0?' + arrastre x'+sw.length:''));
+  renderAll();
+
+  // Limpia bonus?
+  if(G.tbl.length===0){
+    const b=lBonus(card.r),total=pts+b;
+    bigMsg('PORRAZO + LIMPIA! 🌟','limpia',2400);
+    addLog('¡Combo! +'+total+' 🫘');
+    await wait(600);
+    if(award(total,who))return;
+  }else{
+    await wait(400);
+    if(award(pts,who))return;
+  }
+  await wait(500);
+  if(G.playerHand.length===0&&G.cpuHand.length===0)await checkRedeal();
+}
+
+// ── REDEAL / ROUND END ─────────────────
+async function checkRedeal(){
+  if(G.deck.length===0){await endRound();return;}
+  const give=(n)=>G.deck.splice(0,Math.min(n,G.deck.length));
+  G.playerHand=give(3);G.cpuHand=give(3);
+  renderAll();
+  setStatus(G.turn==='p'?'¡Nueva mano! Toca una carta.':'Tía juega...');
+  if(G.turn==='c'){await wait(900);await cpuTurn();}
+}
+
+async function endRound(){
+  G.phase='ROUND_END';
+  // Últimas: last capturer takes remaining table cards
+  if(G.tbl.length>0&&G.lastCapture){
+    const pile=G.lastCapture==='p'?G.pPile:G.cPile;
+    pile.push(...G.tbl);
+    addLog('Últimas → '+(G.lastCapture==='p'?'Tú':'Tía')+' +'+G.tbl.length+' cartas');
+    G.tbl=[];renderTable();
+  }
+  await wait(700);
+
+  // Card count bonus (>20 cards)
+  const pX=Math.max(0,G.pPile.length-20),cX=Math.max(0,G.cPile.length-20);
+  if(pX>0){bigMsg('+'+pX+' 🫘 Conteo','pts',1800);addLog('Tú: '+G.pPile.length+' cartas +'+pX+' 🫘');if(award(pX,'p'))return;await wait(600);}
+  if(cX>0){addLog('Tía: '+G.cPile.length+' cartas +'+cX+' 🫘');if(award(cX,'c'))return;await wait(600);}
+
+  addLog('── Ronda '+G.round+' ── Tú:'+G.pScore+'  Tía:'+G.cScore);
+  setStatus('Ronda '+G.round+' terminada.  Tú: '+G.pScore+' 🫘  Tía: '+G.cScore+' 🫘');
+  const nb=document.getElementById('btn-next');
+  nb.style.display='inline-block';nb.disabled=false;
+}
+
+async function nextRound(){
+  document.getElementById('btn-next').style.display='none';
+  G.dealer=G.dealer==='p'?'c':'p';
+  await startRound();
+}
+
+// ── CPU AI ─────────────────────────────
+async function cpuTurn(){
+  if(G.phase!=='PLAYING'||G.turn!=='c')return;
+  G.busy=true;renderPlrHand();
+  const hand=G.cpuHand;
+  if(!hand.length){G.busy=false;return;}
+  const card=cpuPick(hand);
+  G.cpuHand.splice(G.cpuHand.indexOf(card),1);
+  renderCpuHand();
+  setStatus('Tía juega: '+rdisp(card.r)+SYM[card.s]);
+  await wait(650);
+  await execPlay(card,'c');
+  G.busy=false;
+  if(G.phase==='PLAYING'){
+    G.turn='p';renderPlrHand();
+    setStatus('¡Tu turno! Toca una carta.');
+  }
+}
+
+function cpuPick(hand){
+  // 1. Porrazo if good deal
+  if(G.libre&&G.libre.by==='p'){
+    const pc=hand.find(c=>c.r===G.libre.card.r);
+    if(pc){
+      // Check if best option
+      const bsw=bestSweep(hand);
+      if(!bsw||pPts(pc.r)>=bsw.score||isFace(pc.r))return pc;
+    }
+  }
+  // 2. Best sweep (prefer Limpia)
+  const bsw=bestSweep(hand);
+  if(bsw)return bsw.card;
+  // 3. Play lowest card defensively
+  return [...hand].sort((a,b)=>a.r-b.r)[0];
+}
+
+function bestSweep(hand){
+  return hand.map(c=>{
+    const sw=calcSweep(c.r,G.tbl);if(!sw)return null;
+    const isLimpia=sw.length===G.tbl.length;
+    return{card:c,score:isLimpia?100+lBonus(c.r):sw.length};
+  }).filter(Boolean).sort((a,b)=>b.score-a.score)[0]||null;
+}
+
+// ── PLAYER PLAYS ───────────────────────
+async function plrPlay(idx){
+  if(G.busy||G.turn!=='p'||G.phase!=='PLAYING')return;
+  G.busy=true;
+  const card=G.playerHand.splice(idx,1)[0];
+  await execPlay(card,'p');
+  G.busy=false;
+  if(G.phase==='PLAYING'){
+    G.turn='c';renderAll();
+    setStatus(G.tiaName+' piensa...');
+    await wait(900+Math.random()*400);
+    await cpuTurn();
+  }
+}
+
+// ── HAND CHICA CHECK ───────────────────
+function checkHandChica(hand,who){
+  const cnt={};
+  for(const c of hand)cnt[c.r]=(cnt[c.r]||0)+1;
+  let total=0;
+  for(const[rk,n]of Object.entries(cnt)){
+    const r=+rk;if(n<2)continue;
+    const pts=isFace(r)?(r===11?2:r===12?3:4):1;
+    total+=pts*(n>=3?2:1);
+    if(pts>0){
+      addLog('🃏 Chica en mano! '+rdisp(r)+'-'+rdisp(r)+(n>=3?'-'+rdisp(r):'')+' +'+pts+' 🫘');
+    }
+  }
+  return total;
+}
+
+// ── START ROUND ────────────────────────
+async function startRound(){
+  G.round++;G.phase='TENDIDO';
+  G.playerHand=[];G.cpuHand=[];G.tbl=[];
+  G.pPile=[];G.cPile=[];G.libre=null;G.lastCapture=null;
+  G.deck=shuffle(mkDeck());
+  G.playerHand=G.deck.splice(0,3);
+  G.cpuHand=G.deck.splice(0,3);
+  renderAll();
+  setStatus('Ronda '+G.round+' — El Tendido...');
+  document.getElementById('btn-start').style.display='none';
+
+  // Check hand chicas
+  const pChica=checkHandChica(G.playerHand,'p');
+  const cChica=checkHandChica(G.cpuHand,'c');
+  if(pChica>0){bigMsg('¡CHICA! 🃏','chica',1800);if(award(pChica,'p'))return;await wait(700);}
+  if(cChica>0){bigMsg('¡Chica Tía! 🃏','chica',1800);if(award(cChica,'c'))return;await wait(700);}
+
+  await wait(400);
+  await dealTendido();
+
+  G.phase='PLAYING';
+  G.turn=G.dealer==='p'?'c':'p'; // non-dealer opens
+  renderAll();
+  if(G.turn==='c'){
+    setStatus(G.tiaName+' abre el juego...');
+    await wait(1100);await cpuTurn();
+  }else{
+    setStatus('¡Tu turno! Abre el juego.');
+  }
+}
+
+// ── START GAME ─────────────────────────
+function startGame(){
+  initG();
+  G.tiaName=TIA_NAMES[Math.floor(Math.random()*TIA_NAMES.length)];
+  document.getElementById('cpu-name').textContent=G.tiaName;
+  document.getElementById('win').classList.remove('on');
+  document.getElementById('btn-next').style.display='none';
+  document.getElementById('log').innerHTML='';
+  G.dealer=Math.random()<.5?'p':'c';
+  startRound();
+}
+
+// ── END GAME ───────────────────────────
+function endGame(){
+  G.phase='GAME_OVER';
+  const pw=G.pScore>=20;
+  const ws=document.getElementById('win');
+  document.getElementById('win-title').textContent=pw?'¡GANASTE! 🎉':'La Tía Ganó 😅';
+  document.getElementById('win-title').style.color=pw?'#FFD700':'#CD7F32';
+  document.getElementById('win-sub').textContent='Tú: '+G.pScore+' 🫘  ·  '+G.tiaName+': '+G.cScore+' 🫘';
+  document.getElementById('win-beans').textContent=pw?'🫘🫘🫘🎉':'😅🫘😅';
+  ws.classList.add('on');
+}
+
+// ── INIT ───────────────────────────────
+initG();renderAll();
+</script>
+</body>
+</html>
