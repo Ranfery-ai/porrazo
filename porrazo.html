@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Marias Porrazo 🫘</title>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
@@ -256,6 +256,17 @@ body{
   :root{--cw:90px;--ch:126px}
   #tbl{width:280px;height:calc(var(--ch)+28px)}
 }
+/* Readable labels and controls */
+.sc-name,.row-lbl,.sc-goal,.pile-ct,.deck-ct,.tbl-lbl,.libre-tag{font-size:16px;color:#f5f0e8}
+.rnd-lbl{font-size:18px}.sc-val{font-size:36px}
+.empty-tbl{font-size:18px;color:rgba(255,255,255,.7)}
+.btn{font-size:17px;min-height:44px;padding:10px 18px}
+#ctrl{flex-wrap:wrap}#status{font-size:16px;color:#fff;max-width:90%;white-space:normal}
+.log-e{font-size:15px;color:#f5f0e8;animation:none}
+#log{font-size:15px;color:#f5f0e8;max-height:130px;overflow:auto}
+.c-rk{font-size:21px}.c-su{font-size:16px}.c-face.face-c .c-face-name{font-size:13px}
+#chica-status{font-size:16px;text-align:center;padding:6px;color:#ffdf70}
+@media(max-height:650px){.row-lbl,.pile-ct,.sc-goal,.deck-ct{font-size:14px}.btn{font-size:15px}#log{max-height:60px}}
 </style>
 </head>
 <body>
@@ -299,7 +310,10 @@ body{
   </div>
 </div>
 
+<div id="chica-status" aria-live="polite"></div>
 <div id="ctrl">
+  <button class="btn btn-go" id="btn-chica" onclick="declareChica('p')" style="display:none">Cantar chica</button>
+  <button class="btn btn-go" id="btn-claim" onclick="claimPlayerChica()" style="display:none">Cobrar chica</button>
   <button class="btn btn-go" id="btn-start" onclick="startGame()">Iniciar Partida</button>
   <button class="btn btn-nd" id="btn-next" onclick="nextRound()" style="display:none" disabled>Nueva Ronda ▶</button>
 </div>
@@ -338,7 +352,7 @@ function initG(){
     deck:[],playerHand:[],cpuHand:[],
     tbl:[],pPile:[],cPile:[],
     pScore:0,cScore:0,
-    round:0,
+    round:0,dealId:0,chicas:null,
     dealer:'cpu',
     turn:'player',
     libre:null,       // {card,by}
@@ -352,8 +366,8 @@ function initG(){
 const rdisp=r=>RD[r]||String(r);
 const nxt=r=>RANKS[(RANKS.indexOf(r)+1)%RANKS.length];
 const isFace=r=>r>=11;
-const pPts=r=>isFace(r)?3:1;   // Porrazo points
-const lBonus=r=>r===13?4:r===12?3:r===11?2:1; // Limpia bonus
+const pPts=r=>r===13?4:r===12?3:r===11?2:1;   // Porrazo points
+const lBonus=pPts; // Limpia bonus
 
 function mkDeck(){
   const d=[];
@@ -366,6 +380,61 @@ function shuffle(a){
   return b;
 }
 
+function speak(text){
+  if(!('speechSynthesis' in window))return;
+  const utterance=new SpeechSynthesisUtterance(text);utterance.lang='es-MX';utterance.rate=.9;
+  const voice=window.speechSynthesis.getVoices().find(v=>v.lang.startsWith('es'));
+  if(voice)utterance.voice=voice;window.speechSynthesis.speak(utterance);
+}
+function canPorrazo(card,who){return !!(G.libre&&G.libre.dealId===G.dealId&&G.libre.by!==who&&G.libre.card.r===card.r&&G.tbl.includes(G.libre.card));}
+function pairRank(hand){const counts={};for(const c of hand)counts[c.r]=(counts[c.r]||0)+1;return RANKS.find(r=>counts[r]>=2)||null;}
+function handChica(hand){const rank=pairRank(hand);return {rank,played:0,declared:false,rondin:!!rank&&hand.filter(c=>c.r===rank).length===3,rondinPaid:false};}
+function setupHand(){
+  G.dealId++;G.libre=null;
+  G.chicas={p:handChica(G.playerHand),c:handChica(G.cpuHand),settled:false};
+}
+function renderChica(){
+  const ch=G.chicas,ready=ch&&!ch.settled&&ch.p.rank&&ch.p.played>=2&&G.phase!=='GAME_OVER';
+  document.getElementById('btn-chica').style.display=ready&&!ch.p.declared?'inline-block':'none';
+  document.getElementById('btn-claim').style.display=ready&&ch.p.declared?'inline-block':'none';
+  document.getElementById('chica-status').textContent=ready?(ch.p.declared?'Chica cantada: '+rdisp(ch.p.rank)+'. Solicita tus frijoles.':'Ya jugaste las dos cartas iguales. ¡Canta tu chica!'):'';
+}
+function declareChica(who){
+  const ch=G.chicas;if(!ch||ch.settled||!ch[who].rank||ch[who].played<2||ch[who].declared)return;
+  ch[who].declared=true;const text=(who==='p'?'Tú':'Tía')+': ¡Chica de '+rdisp(ch[who].rank)+'!';
+  addLog(text);bigMsg(text,'chica');speak('Mi chica');renderChica();
+}
+function resolveChica(who){
+  const ch=G.chicas;if(!ch||ch.settled||!ch[who].declared||ch[who].played<2)return;
+  const other=who==='p'?'c':'p',a=ch[who],b=ch[other];
+  if(b.rank&&b.rank>=a.rank){
+    if(!b.declared){b.declared=true;speak('Mi chica');addLog((other==='p'?'Tú':'Tía')+': chica de '+rdisp(b.rank));}
+    if(b.rank===a.rank){ch.settled=true;addLog('Chicas iguales: nadie cobra.');}
+    else {addLog('Chica mayor de '+rdisp(b.rank)+': '+(who==='p'?'Tú':'Tía')+' no cobra.');if(b.played>=2){ch.settled=true;award(pPts(b.rank),other);}}
+  }else{ch.settled=true;award(pPts(a.rank),who);addLog('Chica de '+rdisp(a.rank)+': +'+pPts(a.rank)+' 🫘');}
+  renderChica();
+}
+function recordChicaPlay(card,who){
+  const ch=G.chicas;if(!ch)return;
+  const a=ch[who];if(card.r===a.rank)a.played++;
+  if(who==='c'&&a.played>=2&&!ch.settled){declareChica('c');resolveChica('c');}
+  if(a.rondin&&a.played>=3&&!a.rondinPaid){
+    a.rondinPaid=true;const bonus=3*pPts(a.rank);
+    speak('Rondín');bigMsg('¡RONDÍN! +'+bonus+' 🫘','chica');
+    addLog((who==='p'?'Tú':'Tía')+': rondín de '+rdisp(a.rank)+', +'+bonus+' por el trío (más la chica).');
+    award(bonus,who);
+  }
+  renderChica();
+}
+async function claimPlayerChica(){if(G.busy||G.phase==='GAME_OVER')return;resolveChica('p');if(G.phase==='CHICA_PENDING'&&(!G.chicas.p.rank||G.chicas.settled||G.chicas.c.rank>G.chicas.p.rank)){G.phase='PLAYING';await checkRedeal();if(G.turn==='c')await cpuTurn();}}
+async function finishHand(){
+ if(G.phase==='GAME_OVER'||G.pScore>=20||G.cScore>=20)return;
+ if(!G.playerHand.length&&!G.cpuHand.length){
+  const ch=G.chicas;
+  if(ch&&!ch.settled&&ch.p.rank&&ch.p.played>=2&&(!ch.c.rank||ch.p.rank>ch.c.rank)){G.phase='CHICA_PENDING';setStatus('Canta y cobra tu chica antes del siguiente reparto.');renderChica();return;}
+  await checkRedeal();
+ }
+}
 // ── AUDIO ──────────────────────────────
 let AC=null;
 function ac(){return AC||(AC=new(window.AudioContext||window.webkitAudioContext)())}
@@ -494,7 +563,7 @@ function renderPlrHand(){
   const interactive=G.phase==='PLAYING'&&G.turn==='p'&&!G.busy;
   G.playerHand.forEach((card,i)=>{
     const canSwp=calcSweep(card.r,G.tbl)!==null;
-    const canPrz=G.libre&&G.libre.by==='c'&&card.r===G.libre.card.r;
+    const canPrz=canPorrazo(card,'p');
     const cls=[];
     if(interactive){
       cls.push('c-play');
@@ -523,7 +592,7 @@ function renderTable(){
     cont.appendChild(wrap);
   });
 }
-function renderAll(){renderHUD();renderCpuHand();renderPlrHand();renderTable();}
+function renderAll(){renderHUD();renderCpuHand();renderPlrHand();renderTable();renderChica();}
 
 // ── OVERLAY / LOG ──────────────────────
 function bigMsg(txt,type='pts',ms=1900){
@@ -563,7 +632,7 @@ function award(pts,who){
   if(who==='p'){G.pScore+=pts;ptsPop(pts,true);}
   else{G.cScore+=pts;ptsPop(pts,false);}
   sndPt();renderHUD();
-  if(G.pScore>=20||G.cScore>=20){setTimeout(endGame,700);return true;}
+  if(G.pScore>=20||G.cScore>=20){G.phase='GAME_OVER';renderChica();setTimeout(endGame,700);return true;}
   return false;
 }
 
@@ -571,14 +640,14 @@ function award(pts,who){
 async function dealTendido(){
   const cards=G.deck.splice(0,4);
   const cantoRanks=[1,2,3,4];
-  const cantoWords=['¡Uno!','¡Dos!','¡Tres!','¡Cuatro!'];
+  const cantoWords=['¡As!','¡Dos!','¡Tres!','¡Cuatro!'];
   const tblRect=document.getElementById('tbl').getBoundingClientRect();
   let tendScore=0;
 
   for(let i=0;i<4;i++){
     const c=cards[i];G.tbl.push(c);
     const cx=tblRect.left+tblRect.width/2,cy=tblRect.top+tblRect.height/2;
-    cantoPop(cantoWords[i],cx,cy);
+    cantoPop(cantoWords[i],cx,cy);speak(cantoWords[i]);
     const hit=c.r===cantoRanks[i];
     sndCanto(hit);
     renderTable();
@@ -602,7 +671,7 @@ async function dealTendido(){
 
   const total=tendScore+figPts;
   if(total>0){
-    bigMsg((figPts>0?'¡CHICA! ':'')+'+'+ total+' 🫘','chica',2000);
+    bigMsg((figPts>0?'¡FIGURAS! ':'')+'+'+ total+' 🫘','chica',2000);
     await wait(400);
     if(award(total,G.dealer==='p'?'p':'c'))return;
     await wait(700);
@@ -612,9 +681,11 @@ async function dealTendido(){
 // ── EXECUTE PLAY ───────────────────────
 async function execPlay(card,who){
   const isP=who==='p';
+  recordChicaPlay(card,who);
+  if(G.pScore>=20||G.cScore>=20)return;
 
   // ─ Porrazo?
-  if(G.libre&&G.libre.by!==who&&card.r===G.libre.card.r){
+  if(canPorrazo(card,who)){
     await doPorrazo(card,who);return;
   }
 
@@ -631,7 +702,7 @@ async function execPlay(card,who){
     // Limpia?
     if(G.tbl.length===0){
       const b=lBonus(card.r);
-      bigMsg('¡LIMPIA! 🌬️','limpia',2000);
+      speak('Limpia');bigMsg('¡LIMPIA! 🌬️','limpia',2000);
       addLog('¡LIMPIA! +'+b+' 🫘');
       await wait(500);
       if(award(b,who))return;
@@ -639,19 +710,19 @@ async function execPlay(card,who){
     }
   }else{
     // Libre
-    G.tbl.push(card);G.libre={card,by:who};
+    G.tbl.push(card);G.libre={card,by:who,dealId:G.dealId};
     addLog((isP?'Tú':'Tía')+': puso '+rdisp(card.r)+SYM[card.s]+' libre');
     renderAll();
   }
 
-  if(G.playerHand.length===0&&G.cpuHand.length===0)await checkRedeal();
+
 }
 
 // ── PORRAZO ────────────────────────────
 async function doPorrazo(card,who){
   const isP=who==='p';
   sndClack();
-  bigMsg('¡PORRAZO! 💥','porrazo',2200);
+  speak('Porrazo');bigMsg('¡PORRAZO! 💥','porrazo',2200);
   await wait(200);sndClack();
 
   const pts=pPts(card.r);
@@ -671,7 +742,7 @@ async function doPorrazo(card,who){
   // Limpia bonus?
   if(G.tbl.length===0){
     const b=lBonus(card.r),total=pts+b;
-    bigMsg('PORRAZO + LIMPIA! 🌟','limpia',2400);
+    speak('Limpia');bigMsg('PORRAZO + LIMPIA! 🌟','limpia',2400);
     addLog('¡Combo! +'+total+' 🫘');
     await wait(600);
     if(award(total,who))return;
@@ -680,17 +751,18 @@ async function doPorrazo(card,who){
     if(award(pts,who))return;
   }
   await wait(500);
-  if(G.playerHand.length===0&&G.cpuHand.length===0)await checkRedeal();
+
 }
 
 // ── REDEAL / ROUND END ─────────────────
 async function checkRedeal(){
   if(G.deck.length===0){await endRound();return;}
+  if(G.deck.length<=6){speak('Últimas');addLog('¡Últimas! Se reparten las últimas cartas.');}
   const give=(n)=>G.deck.splice(0,Math.min(n,G.deck.length));
-  G.playerHand=give(3);G.cpuHand=give(3);
+  G.playerHand=give(3);G.cpuHand=give(3);setupHand();
   renderAll();
   setStatus(G.turn==='p'?'¡Nueva mano! Toca una carta.':'Tía juega...');
-  if(G.turn==='c'){await wait(900);await cpuTurn();}
+
 }
 
 async function endRound(){
@@ -734,6 +806,7 @@ async function cpuTurn(){
   await wait(650);
   await execPlay(card,'c');
   G.busy=false;
+  G.turn='p';await finishHand();
   if(G.phase==='PLAYING'){
     G.turn='p';renderPlrHand();
     setStatus('¡Tu turno! Toca una carta.');
@@ -742,7 +815,7 @@ async function cpuTurn(){
 
 function cpuPick(hand){
   // 1. Porrazo if good deal
-  if(G.libre&&G.libre.by==='p'){
+  if(G.libre&&G.libre.dealId===G.dealId&&G.libre.by==='p'){
     const pc=hand.find(c=>c.r===G.libre.card.r);
     if(pc){
       // Check if best option
@@ -772,28 +845,13 @@ async function plrPlay(idx){
   const card=G.playerHand.splice(idx,1)[0];
   await execPlay(card,'p');
   G.busy=false;
+  G.turn='c';await finishHand();
   if(G.phase==='PLAYING'){
     G.turn='c';renderAll();
     setStatus(G.tiaName+' piensa...');
     await wait(900+Math.random()*400);
     await cpuTurn();
   }
-}
-
-// ── HAND CHICA CHECK ───────────────────
-function checkHandChica(hand,who){
-  const cnt={};
-  for(const c of hand)cnt[c.r]=(cnt[c.r]||0)+1;
-  let total=0;
-  for(const[rk,n]of Object.entries(cnt)){
-    const r=+rk;if(n<2)continue;
-    const pts=isFace(r)?(r===11?2:r===12?3:4):1;
-    total+=pts*(n>=3?2:1);
-    if(pts>0){
-      addLog('🃏 Chica en mano! '+rdisp(r)+'-'+rdisp(r)+(n>=3?'-'+rdisp(r):'')+' +'+pts+' 🫘');
-    }
-  }
-  return total;
 }
 
 // ── START ROUND ────────────────────────
@@ -808,14 +866,10 @@ async function startRound(){
   setStatus('Ronda '+G.round+' — El Tendido...');
   document.getElementById('btn-start').style.display='none';
 
-  // Check hand chicas
-  const pChica=checkHandChica(G.playerHand,'p');
-  const cChica=checkHandChica(G.cpuHand,'c');
-  if(pChica>0){bigMsg('¡CHICA! 🃏','chica',1800);if(award(pChica,'p'))return;await wait(700);}
-  if(cChica>0){bigMsg('¡Chica Tía! 🃏','chica',1800);if(award(cChica,'c'))return;await wait(700);}
-
+  setupHand();
   await wait(400);
   await dealTendido();
+  if(G.phase==='GAME_OVER')return;
 
   G.phase='PLAYING';
   G.turn=G.dealer==='p'?'c':'p'; // non-dealer opens
@@ -830,6 +884,7 @@ async function startRound(){
 
 // ── START GAME ─────────────────────────
 function startGame(){
+  if(window.speechSynthesis)window.speechSynthesis.cancel();
   initG();
   G.tiaName=TIA_NAMES[Math.floor(Math.random()*TIA_NAMES.length)];
   document.getElementById('cpu-name').textContent=G.tiaName;
